@@ -6,9 +6,12 @@ import SessionCard from './components/SessionCard';
 import WeeklyCalendar from './components/WeeklyCalendar';
 import AddModal from './components/AddModal';
 import ConfirmDeleteModal from './components/ConfirmDeleteModal';
-import JoinModal from './components/JoinModal';
+import AuthScreen from './components/AuthScreen';
 import Footer from './components/Footer';
+import SettingsModal from './components/SettingsModal';
 import {
+  suscribirAAuth,
+  cerrarSesionUsuario,
   suscribirACartelera,
   agregarSesion,
   eliminarSesion,
@@ -17,6 +20,9 @@ import {
 } from './services/firebase';
 
 export default function App() {
+  const [usuario, setUsuario] = useState(null);
+  const [comprobandoAuth, setComprobandoAuth] = useState(true);
+
   const [sesiones, setSesiones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorConexion, setErrorConexion] = useState(null);
@@ -26,14 +32,25 @@ export default function App() {
 
   const [sesionAEliminar, setSesionAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+  const [ajustesAbierto, setAjustesAbierto] = useState(false);
 
-  // Nombre del usuario actual para apuntarse rápido
-  const [usuarioActual, setUsuarioActual] = useState(
-    () => localStorage.getItem('cine_autor') || ''
-  );
-  const [sesionParaApuntarse, setSesionParaApuntarse] = useState(null);
-
+  // Escuchar sesión del usuario
   useEffect(() => {
+    const desuscribirAuth = suscribirAAuth((user) => {
+      setUsuario(user);
+      setComprobandoAuth(false);
+    });
+    return () => desuscribirAuth();
+  }, []);
+
+  // Escuchar cartelera solo cuando hay usuario conectado
+  useEffect(() => {
+    if (!usuario) {
+      setSesiones([]);
+      return;
+    }
+
+    setCargando(true);
     const desuscribir = suscribirACartelera(
       (datos) => {
         setSesiones(datos);
@@ -47,30 +64,40 @@ export default function App() {
     );
 
     return () => desuscribir();
-  }, []);
+  }, [usuario]);
+
+  if (comprobandoAuth) {
+    return (
+      <div className="min-h-screen film-grain text-zinc-100 flex flex-col items-center justify-center">
+        <SpinnerGap className="w-8 h-8 animate-spin text-rose-400 mb-3" />
+        <p className="font-mono-ticket text-xs uppercase tracking-widest text-zinc-400">
+          Comprobando pase...
+        </p>
+      </div>
+    );
+  }
+
+  if (!usuario) {
+    return <AuthScreen />;
+  }
 
   const manejarToggleAsistencia = async (sesion) => {
-    const nombreGuardado = (localStorage.getItem('cine_autor') || usuarioActual).trim();
-
-    if (!nombreGuardado) {
-      setSesionParaApuntarse(sesion);
-      return;
-    }
-
-    setUsuarioActual(nombreGuardado);
-    const yaEstaba = (sesion.asistentes || []).includes(nombreGuardado);
-    await alternarAsistencia(sesion.id, nombreGuardado, yaEstaba);
+    const yaEstaba = (sesion.asistentes || []).includes(usuario.nombre);
+    await alternarAsistencia(sesion.id, usuario.nombre, yaEstaba);
   };
 
-  const confirmarNombreYApuntar = async (sesion, nuevoNombre) => {
-    localStorage.setItem('cine_autor', nuevoNombre);
-    setUsuarioActual(nuevoNombre);
-    setSesionParaApuntarse(null);
+  const manejarCrearSesion = async (datos) => {
+    await agregarSesion({
+      ...datos,
+      creadoPor: usuario.nombre
+    });
+  };
 
-    const yaEstaba = (sesion.asistentes || []).includes(nuevoNombre);
-    if (!yaEstaba) {
-      await alternarAsistencia(sesion.id, nuevoNombre, false);
-    }
+  const manejarActualizarSesion = async (id, datos) => {
+    await actualizarSesion(id, {
+      ...datos,
+      editadoPor: usuario.nombre
+    });
   };
 
   const abrirParaCrear = () => {
@@ -86,7 +113,6 @@ export default function App() {
   const cerrarModal = () => {
     setModalAbierto(false);
     setSesionAEditar(null);
-    setUsuarioActual(localStorage.getItem('cine_autor') || '');
   };
 
   const confirmarEliminacion = async (id) => {
@@ -101,6 +127,11 @@ export default function App() {
     }
   };
 
+  const manejarCambioNombre = async (nuevoNombre) => {
+    const usuarioActualizado = await cambiarNombreUsuario(nuevoNombre);
+    setUsuario(usuarioActualizado);
+  };
+
   return (
     <div className="min-h-screen film-grain text-zinc-100 flex flex-col">
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[260px] bg-rose-500/10 blur-[120px] pointer-events-none -z-10" />
@@ -110,9 +141,11 @@ export default function App() {
         setVista={setVista}
         onAbrirModal={abrirParaCrear}
         totalSesiones={sesiones.length}
+        usuario={usuario}
+        onCerrarSesion={cerrarSesionUsuario}
       />
 
-      <main className={`flex-1 w-full ${vista === 'calendario' ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-10 transition-all duration-300`}>
+      <main className={`flex-1 w-full ${vista === 'calendario' ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-8 sm:pt-10 transition-all duration-300`}>
         <div className="mb-8 text-center sm:text-left">
           <p className="font-mono-ticket text-xs uppercase tracking-[0.2em] text-rose-400 mb-1">
             Programación Oficial
@@ -135,7 +168,7 @@ export default function App() {
         ) : vista === 'calendario' ? (
           <WeeklyCalendar
             sesiones={sesiones}
-            usuarioActual={usuarioActual}
+            usuarioActual={usuario.nombre}
             onToggleAsistencia={manejarToggleAsistencia}
             onEditar={abrirParaEditar}
             onEliminar={(sesion) => setSesionAEliminar(sesion)}
@@ -170,7 +203,7 @@ export default function App() {
                   key={sesion.id}
                   sesion={sesion}
                   index={idx}
-                  usuarioActual={usuarioActual}
+                  usuarioActual={usuario.nombre}
                   onToggleAsistencia={manejarToggleAsistencia}
                   onEditar={abrirParaEditar}
                   onEliminar={(s) => setSesionAEliminar(s)}
@@ -184,8 +217,8 @@ export default function App() {
       <AddModal
         isOpen={modalAbierto}
         onClose={cerrarModal}
-        onGuardar={agregarSesion}
-        onActualizar={actualizarSesion}
+        onGuardar={manejarCrearSesion}
+        onActualizar={manejarActualizarSesion}
         sesionAEditar={sesionAEditar}
       />
 
@@ -196,10 +229,11 @@ export default function App() {
         onConfirmar={confirmarEliminacion}
       />
 
-      <JoinModal
-        sesion={sesionParaApuntarse}
-        onCerrar={() => setSesionParaApuntarse(null)}
-        onConfirmarNombre={confirmarNombreYApuntar}
+      <SettingsModal
+        isOpen={ajustesAbierto}
+        onClose={() => setAjustesAbierto(false)}
+        usuario={usuario}
+        onGuardarNombre={manejarCambioNombre}
       />
 
       <Footer />

@@ -6,10 +6,21 @@ import {
   Plus,
   FilmStrip,
   List,
-  X
+  X,
+  SignOut,
+  UserCircle,
+  GearSix
 } from '@phosphor-icons/react';
 
-export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones }) {
+export default function Navbar({
+  vista,
+  setVista,
+  onAbrirModal,
+  totalSesiones,
+  usuario,
+  onCerrarSesion,
+  onAbrirAjustes
+}) {
   const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
 
   const cambiarVistaMovil = (nuevaVista) => {
@@ -41,7 +52,7 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
             </div>
           </div>
 
-          {/* Controles PC (exactamente igual que antes, ocultos en móvil) */}
+          {/* Controles PC */}
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center bg-zinc-900/90 border border-white/10 p-1 rounded-full">
               <button
@@ -75,16 +86,40 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
               <Plus weight="bold" className="w-4 h-4" />
               <span>Nueva sesión</span>
             </button>
+
+            {usuario && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
+                <button
+                  type="button"
+                  onClick={onAbrirAjustes}
+                  title="Ajustes de perfil"
+                  className="inline-flex items-center gap-1.5 font-mono-ticket text-xs text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 transition cursor-pointer"
+                >
+                  <UserCircle weight="duotone" className="w-4 h-4 text-emerald-400" />
+                  <span>{usuario.nombre}</span>
+                  <GearSix weight="bold" className="w-3.5 h-3.5 text-zinc-400 ml-0.5" />
+                </button>
+                <button
+                  onClick={onCerrarSesion}
+                  title="Cerrar sesión"
+                  className="p-2 rounded-full bg-white/5 hover:bg-rose-500/15 text-zinc-400 hover:text-rose-400 transition cursor-pointer"
+                >
+                  <SignOut weight="bold" className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Botón hamburguesa solo para móvil */}
           <button
             type="button"
-            onClick={() => setMenuMovilAbierto(true)}
-            aria-label="Abrir menú"
-            className="md:hidden p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-200 transition cursor-pointer shrink-0"
+            onClick={() => {
+              setMenuMovilAbierto(false);
+              onAbrirAjustes();
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-zinc-200 font-mono-ticket text-xs py-3 rounded-2xl border border-white/10 transition cursor-pointer"
           >
-            <List weight="bold" className="w-5 h-5" />
+            <GearSix weight="bold" className="w-4 h-4 text-amber-400" />
+            <span>Ajustes de perfil</span>
           </button>
         </div>
       </header>
@@ -93,7 +128,6 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
       <AnimatePresence>
         {menuMovilAbierto && (
           <>
-            {/* Fondo oscurecido */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -102,7 +136,6 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
               className="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm md:hidden"
             />
 
-            {/* Panel lateral derecho */}
             <motion.aside
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
@@ -114,10 +147,10 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
                 <div className="flex items-center justify-between pb-5 border-b border-white/10">
                   <div>
                     <p className="font-mono-ticket text-[10px] uppercase tracking-widest text-rose-400">
-                      Navegación
+                      Conectado como
                     </p>
                     <span className="font-editorial text-2xl text-white">
-                      Sala Privada
+                      {usuario?.nombre}
                     </span>
                   </div>
                   <button
@@ -162,7 +195,7 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
                 </div>
               </div>
 
-              <div className="pt-5 border-t border-white/10 space-y-3">
+              <div className="pt-5 border-t border-white/10 space-y-2.5">
                 <button
                   type="button"
                   onClick={abrirModalMovil}
@@ -170,6 +203,18 @@ export default function Navbar({ vista, setVista, onAbrirModal, totalSesiones })
                 >
                   <Plus weight="bold" className="w-4 h-4" />
                   <span>Nueva sesión</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuMovilAbierto(false);
+                    onCerrarSesion();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-rose-500/15 text-zinc-300 hover:text-rose-300 font-mono-ticket text-xs py-3 rounded-2xl transition cursor-pointer"
+                >
+                  <SignOut weight="bold" className="w-4 h-4" />
+                  <span>Cerrar sesión</span>
                 </button>
               </div>
             </motion.aside>

@@ -82,7 +82,7 @@ export default function WeeklyCalendar({
           </button>
         </div>
 
-        <h2 className="font-editorial text-2xl sm:text-3xl text-white capitalize">
+        <h2 className="font-editorial text-xl sm:text-3xl text-white capitalize">
           {rangoTexto}
         </h2>
       </div>
@@ -96,7 +96,7 @@ export default function WeeklyCalendar({
           return (
             <div
               key={fechaISO}
-              className={`rounded-3xl p-3 border transition flex flex-col min-h-[130px] md:min-h-[340px] ${
+              className={`rounded-3xl p-3 border transition flex flex-col min-h-[100px] md:min-h-[340px] ${
                 esHoy
                   ? 'bg-gradient-to-b from-rose-500/15 to-zinc-900/60 border-rose-500/40'
                   : 'bg-zinc-900/40 border-white/10'
@@ -107,7 +107,7 @@ export default function WeeklyCalendar({
                   {dia.toLocaleDateString('es-ES', { weekday: 'short' })}
                 </span>
                 <span
-                  className={`font-mono-ticket text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${
+                  className={`font-mono-ticket text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center md:mt-0.5 ${
                     esHoy ? 'bg-rose-500 text-white' : 'text-zinc-200'
                   }`}
                 >
@@ -117,7 +117,7 @@ export default function WeeklyCalendar({
 
               <div className="flex-1 space-y-2.5">
                 {sesionesDelDia.length === 0 ? (
-                  <div className="h-full flex items-center justify-center py-4">
+                  <div className="h-full flex items-center justify-center py-3 md:py-4">
                     <span className="font-mono-ticket text-[10px] uppercase tracking-widest text-zinc-700">
                       Sin pase
                     </span>
@@ -137,7 +137,74 @@ export default function WeeklyCalendar({
                         key={sesion.id}
                         className="group relative rounded-2xl overflow-hidden bg-zinc-950 border border-white/10 shadow-lg"
                       >
-                        <div className="relative aspect-[2/3] w-full overflow-hidden">
+                        {/* VISTA MÓVIL (< md): Tarjeta horizontal compacta con póster pequeño */}
+                        <div className="flex md:hidden items-center gap-3 p-2.5">
+                          <img
+                            src={sesion.poster}
+                            alt={sesion.titulo}
+                            className="w-14 h-20 object-cover rounded-xl shrink-0 ring-1 ring-white/10"
+                          />
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="inline-flex items-center gap-1 font-mono-ticket text-[10px] font-bold bg-amber-400/15 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/25">
+                                <Clock weight="fill" className="w-3 h-3" />
+                                {hora}
+                              </span>
+
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => onEditar?.(sesion)}
+                                  title="Editar pase"
+                                  className="p-1.5 rounded-full bg-white/5 text-zinc-400 hover:text-amber-300 transition cursor-pointer"
+                                >
+                                  <PencilSimple weight="bold" className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => onEliminar(sesion)}
+                                  title="Eliminar pase"
+                                  className="p-1.5 rounded-full bg-white/5 text-zinc-400 hover:text-rose-400 transition cursor-pointer"
+                                >
+                                  <Trash weight="bold" className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            <p className="text-sm font-bold text-white truncate mt-1.5">
+                              {sesion.titulo}
+                            </p>
+
+                            <div className="flex items-center justify-between gap-2 mt-2">
+                              <span className="inline-flex items-center gap-1 font-mono-ticket text-[10px] text-zinc-400">
+                                <UsersThree weight="fill" className="w-3.5 h-3.5 text-emerald-400" />
+                                {asistentes.length} {asistentes.length === 1 ? 'persona' : 'personas'}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => onToggleAsistencia(sesion)}
+                                className={`font-mono-ticket text-[10px] font-bold px-2.5 py-1 rounded-full transition cursor-pointer ${
+                                  estoyApuntado
+                                    ? 'bg-emerald-400 text-zinc-950'
+                                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                                }`}
+                              >
+                                {estoyApuntado ? (
+                                  <span className="inline-flex items-center gap-0.5">
+                                    <Check weight="bold" className="w-3 h-3" /> Voy
+                                  </span>
+                                ) : (
+                                  '+ Me apunto'
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* VISTA PC (md+): Exactamente igual que antes */}
+                        <div className="hidden md:block relative aspect-[2/3] w-full overflow-hidden">
                           <img
                             src={sesion.poster}
                             alt={sesion.titulo}

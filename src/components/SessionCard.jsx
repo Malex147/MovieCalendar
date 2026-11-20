@@ -67,8 +67,6 @@ export default function SessionCard({
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div>
             <div className="flex items-center gap-2 font-mono-ticket text-[10px] sm:text-[11px] text-zinc-400 mb-1">
-              <span></span>
-              <span>•</span>
               <span>{sesion.anio || 'ESTRENO'}</span>
             </div>
 
@@ -90,6 +88,12 @@ export default function SessionCard({
                   Propone: <strong className="text-zinc-200 font-semibold">{sesion.autor}</strong>
                 </span>
               </div>
+            )}
+            
+            {sesion.editadoPor && (
+              <p className="font-mono-ticket text-[10px] text-zinc-500 mt-1">
+                Editado por {sesion.editadoPor}
+              </p>
             )}
           </div>
 
