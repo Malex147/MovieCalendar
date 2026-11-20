@@ -1,1 +1,24 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #08080a;
+    color: #f4f4f5;
+    overflow-x: hidden;
+  }
+
+  h1, h2, .font-editorial {
+    font-family: 'Instrument Serif', serif;
+  }
+
+  .font-mono-ticket {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Textura sutil de grano de película de 35mm */
+.film-grain {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-size: 24px 24px;
+}

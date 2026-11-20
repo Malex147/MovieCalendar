@@ -29,16 +29,23 @@ const COLLECTION_NAME = 'cartelera';
 /**
  * Escucha cambios en tiempo real ordenados por fecha y hora
  */
-export const suscribirACartelera = (callback) => {
+export const suscribirACartelera = (callback, onError) => {
   const q = query(collection(db, COLLECTION_NAME), orderBy('fechaHora', 'asc'));
-  
-  return onSnapshot(q, (snapshot) => {
-    const sesiones = snapshot.docs.map((documento) => ({
-      id: documento.id,
-      ...documento.data()
-    }));
-    callback(sesiones);
-  });
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const sesiones = snapshot.docs.map((documento) => ({
+        id: documento.id,
+        ...documento.data()
+      }));
+      callback(sesiones);
+    },
+    (error) => {
+      console.error('Error al escuchar Firestore:', error);
+      if (onError) onError(error);
+    }
+  );
 };
 
 /**
