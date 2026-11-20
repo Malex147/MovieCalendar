@@ -1,13 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot, 
-  query, 
-  orderBy 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  onSnapshot,
+  query,
+  orderBy
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -64,4 +67,16 @@ export const agregarSesion = async (datosSesion) => {
 export const eliminarSesion = async (id) => {
   const docRef = doc(db, COLLECTION_NAME, id);
   return await deleteDoc(docRef);
+};
+
+export const actualizarSesion = async (id, datosActualizados) => {
+  const sesionRef = doc(db, COLLECTION_NAME, id);
+  await updateDoc(sesionRef, datosActualizados);
+};
+
+export const alternarAsistencia = async (sesionId, nombre, yaEstabaApuntado) => {
+  const sesionRef = doc(db, COLLECTION_NAME, sesionId);
+  await updateDoc(sesionRef, {
+    asistentes: yaEstabaApuntado ? arrayRemove(nombre) : arrayUnion(nombre)
+  });
 };

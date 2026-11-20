@@ -25,7 +25,6 @@ const HORAS_DIA = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'
 const MINUTOS_DIA = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
 const DIAS_SEMANA_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-// Componente de rueda deslizable compatible con dedo (móvil), rueda de ratón y arrastrar con ratón (PC)
 function RuedaDeslizable({ items, valorActual, onChange }) {
   const contenedorRef = useRef(null);
   const arrastrandoRef = useRef(false);
@@ -109,7 +108,7 @@ function RuedaDeslizable({ items, valorActual, onChange }) {
   );
 }
 
-export default function AddModal({ isOpen, onClose, onGuardar }) {
+export default function AddModal({ isOpen, onClose, onGuardar, onActualizar, sesionAEditar }) {
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState([]);
   const [buscando, setBuscando] = useState(false);
@@ -119,7 +118,7 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
   const [horaSeleccionada, setHoraSeleccionada] = useState('22');
   const [minutoSeleccionado, setMinutoSeleccionado] = useState('00');
 
-  const [panelAbierto, setPanelAbierto] = useState(null); // 'calendario' | 'reloj' | null
+  const [panelAbierto, setPanelAbierto] = useState(null);
   const [mesCalendario, setMesCalendario] = useState(() => {
     const hoy = new Date();
     return new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -129,7 +128,50 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
 
+  const esEdicion = Boolean(sesionAEditar);
   const horaCompleta = `${horaSeleccionada}:${minutoSeleccionado}`;
+
+  // Rellenar o limpiar el formulario al abrir el modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setPanelAbierto(null);
+    setResultados([]);
+    setBusqueda('');
+
+    if (sesionAEditar) {
+      setSeleccionada({
+        tmdbId: sesionAEditar.tmdbId,
+        titulo: sesionAEditar.titulo,
+        tipo: sesionAEditar.tipo,
+        anio: sesionAEditar.anio,
+        poster: sesionAEditar.poster
+      });
+
+      const [fParte, hParte = '22:00'] = sesionAEditar.fechaHora.split('T');
+      const [h, m] = hParte.split(':');
+      setFecha(fParte);
+      setHoraSeleccionada(h || '22');
+      setMinutoSeleccionado(m || '00');
+
+      const [anioF, mesF] = fParte.split('-').map(Number);
+      if (anioF && mesF) {
+        setMesCalendario(new Date(anioF, mesF - 1, 1));
+      }
+
+      setAutor(sesionAEditar.autor || '');
+      setNota(sesionAEditar.nota || '');
+    } else {
+      setSeleccionada(null);
+      const hoy = new Date();
+      setFecha(formatearISO(hoy));
+      setMesCalendario(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+      setHoraSeleccionada('22');
+      setMinutoSeleccionado('00');
+      setAutor(localStorage.getItem('cine_autor') || '');
+      setNota('');
+    }
+  }, [isOpen, sesionAEditar]);
 
   useEffect(() => {
     if (!busqueda.trim() || busqueda.trim().length < 2) {
@@ -179,32 +221,33 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
 
   const manejarEnvio = async (e) => {
     e.preventDefault();
-    if (!seleccionada || !fecha || !autor.trim()) return;
+    if (!seleccionada || !fecha) return;
 
     setGuardando(true);
     localStorage.setItem('cine_autor', autor.trim());
 
-    try {
-      await onGuardar({
-        tmdbId: seleccionada.tmdbId,
-        titulo: seleccionada.titulo,
-        tipo: seleccionada.tipo,
-        anio: seleccionada.anio,
-        poster: seleccionada.poster,
-        fechaHora: `${fecha}T${horaCompleta}`,
-        autor: autor.trim(),
-        nota: nota.trim()
-      });
+    const payload = {
+      tmdbId: seleccionada.tmdbId,
+      titulo: seleccionada.titulo,
+      tipo: seleccionada.tipo,
+      anio: seleccionada.anio,
+      poster: seleccionada.poster,
+      fechaHora: `${fecha}T${horaCompleta}`,
+      autor: autor.trim(),
+      nota: nota.trim(),
+      asistentes: autor.trim() ? [autor.trim()] : []
+    };
 
-      setBusqueda('');
-      setResultados([]);
-      setSeleccionada(null);
-      setNota('');
-      setPanelAbierto(null);
+    try {
+      if (esEdicion) {
+        await onActualizar(sesionAEditar.id, payload);
+      } else {
+        await onGuardar(payload);
+      }
       onClose();
     } catch (error) {
       console.error('Error al guardar:', error);
-      alert('Error al guardar el pase en Firestore.');
+      alert('No se pudieron guardar los cambios en Firestore.');
     } finally {
       setGuardando(false);
     }
@@ -230,10 +273,10 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-zinc-950/50">
               <div>
                 <p className="font-mono-ticket text-[10px] uppercase tracking-widest text-rose-400">
-                  Taquilla
+                  {esEdicion ? 'Modificar Pase' : 'Taquilla'}
                 </p>
                 <h2 className="font-editorial text-2xl text-white leading-none">
-                  Programar nueva sesión
+                  {esEdicion ? 'Editar sesión' : 'Programar nueva sesión'}
                 </h2>
               </div>
               <button
@@ -245,56 +288,58 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
             </div>
 
             <form onSubmit={manejarEnvio} className="p-6 overflow-y-auto space-y-5">
-              {/* 1. Buscador de TMDB */}
+              {/* 1. Película o Serie */}
               <div>
                 <label className="block font-mono-ticket text-[11px] uppercase tracking-wider text-zinc-400 mb-2">
                   01. Película o Serie
                 </label>
-                <div className="relative">
-                  <MagnifyingGlass className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={busqueda}
-                    onChange={(e) => {
-                      setBusqueda(e.target.value);
-                      if (seleccionada) setSeleccionada(null);
-                    }}
-                    placeholder="Buscar título en TMDB..."
-                    className="w-full bg-zinc-950 border border-white/10 focus:border-rose-500 rounded-2xl pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 outline-none transition"
-                    autoFocus
-                  />
-                  {buscando && (
-                    <SpinnerGap className="w-4 h-4 text-rose-400 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
-                  )}
-                </div>
 
-                {resultados.length > 0 && !seleccionada && (
-                  <div className="grid grid-cols-3 gap-2.5 mt-3">
-                    {resultados.map((item) => (
-                      <button
-                        type="button"
-                        key={`${item.tipo}-${item.tmdbId}`}
-                        onClick={() => setSeleccionada(item)}
-                        className="group text-left bg-zinc-950 hover:bg-zinc-800/80 border border-white/10 hover:border-rose-500/50 rounded-2xl p-2 transition cursor-pointer flex flex-col"
-                      >
-                        <img
-                          src={item.poster}
-                          alt={item.titulo}
-                          className="w-full aspect-[2/3] object-cover rounded-xl mb-2"
-                        />
-                        <p className="text-xs font-bold text-white line-clamp-1 group-hover:text-rose-400">
-                          {item.titulo}
-                        </p>
-                        <span className="font-mono-ticket text-[10px] text-zinc-500">
-                          {item.tipo} · {item.anio}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                {!seleccionada && (
+                  <>
+                    <div className="relative">
+                      <MagnifyingGlass className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        placeholder="Buscar título en TMDB..."
+                        className="w-full bg-zinc-950 border border-white/10 focus:border-rose-500 rounded-2xl pl-10 pr-10 py-3 text-sm text-white placeholder-zinc-500 outline-none transition"
+                        autoFocus={!esEdicion}
+                      />
+                      {buscando && (
+                        <SpinnerGap className="w-4 h-4 text-rose-400 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+                      )}
+                    </div>
+
+                    {resultados.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2.5 mt-3">
+                        {resultados.map((item) => (
+                          <button
+                            type="button"
+                            key={`${item.tipo}-${item.tmdbId}`}
+                            onClick={() => setSeleccionada(item)}
+                            className="group text-left bg-zinc-950 hover:bg-zinc-800/80 border border-white/10 hover:border-rose-500/50 rounded-2xl p-2 transition cursor-pointer flex flex-col"
+                          >
+                            <img
+                              src={item.poster}
+                              alt={item.titulo}
+                              className="w-full aspect-[2/3] object-cover rounded-xl mb-2"
+                            />
+                            <p className="text-xs font-bold text-white line-clamp-1 group-hover:text-rose-400">
+                              {item.titulo}
+                            </p>
+                            <span className="font-mono-ticket text-[10px] text-zinc-500">
+                              {item.tipo} · {item.anio}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {seleccionada && (
-                  <div className="mt-3 flex items-center gap-3.5 bg-gradient-to-r from-rose-500/15 to-amber-500/10 border border-rose-500/30 p-3 rounded-2xl">
+                  <div className="flex items-center gap-3.5 bg-gradient-to-r from-rose-500/15 to-amber-500/10 border border-rose-500/30 p-3 rounded-2xl">
                     <img
                       src={seleccionada.poster}
                       alt={seleccionada.titulo}
@@ -323,14 +368,13 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                 )}
               </div>
 
-              {/* 2. Botones disparadores de Fecha y Hora */}
+              {/* 2. Fecha y Hora */}
               <div>
                 <label className="block font-mono-ticket text-[11px] uppercase tracking-wider text-zinc-400 mb-2">
                   02. Fecha y Hora de inicio
                 </label>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Botón Fecha */}
                   <button
                     type="button"
                     onClick={() =>
@@ -353,7 +397,6 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                     </div>
                   </button>
 
-                  {/* Botón Hora */}
                   <button
                     type="button"
                     onClick={() =>
@@ -377,7 +420,6 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                   </button>
                 </div>
 
-                {/* Panel Desplegable 1: Calendario Mensual */}
                 <AnimatePresence>
                   {panelAbierto === 'calendario' && (
                     <motion.div
@@ -454,7 +496,6 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                   )}
                 </AnimatePresence>
 
-                {/* Panel Desplegable 2: Rueda deslizable de Hora y Minuto */}
                 <AnimatePresence>
                   {panelAbierto === 'reloj' && (
                     <motion.div
@@ -468,7 +509,6 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                           Atajos o desliza la rueda
                         </span>
 
-                        {/* Atajos rápidos para no tener que hacer scroll largo en PC */}
                         <div className="flex flex-wrap justify-center gap-1.5 mb-3">
                           {['18:00', '20:30', '21:30', '22:00', '22:30'].map((preset) => {
                             const [h, m] = preset.split(':');
@@ -531,10 +571,9 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
                   </label>
                   <input
                     type="text"
-                    required
                     value={autor}
                     onChange={(e) => setAutor(e.target.value)}
-                    placeholder="Tu nombre"
+                    placeholder="Tu nombre (Opcional)"
                     className="w-full bg-zinc-950 border border-white/10 focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 outline-none"
                   />
                 </div>
@@ -557,10 +596,14 @@ export default function AddModal({ isOpen, onClose, onGuardar }) {
               {/* Botón de confirmar */}
               <button
                 type="submit"
-                disabled={!seleccionada || !fecha || !autor.trim() || guardando}
+                disabled={!seleccionada || !fecha || guardando}
                 className="w-full bg-gradient-to-r from-rose-500 to-amber-500 hover:opacity-95 disabled:opacity-30 text-zinc-950 font-bold text-sm py-3.5 rounded-2xl transition cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-rose-500/20"
               >
-                {guardando ? 'Emitiendo entrada...' : `Confirmar pase · ${horaCompleta}`}
+                {guardando
+                  ? 'Guardando...'
+                  : esEdicion
+                  ? `Guardar cambios · ${horaCompleta}`
+                  : `Confirmar pase · ${horaCompleta}`}
               </button>
             </form>
           </motion.div>

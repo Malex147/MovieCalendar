@@ -6,17 +6,32 @@ import SessionCard from './components/SessionCard';
 import WeeklyCalendar from './components/WeeklyCalendar';
 import AddModal from './components/AddModal';
 import ConfirmDeleteModal from './components/ConfirmDeleteModal';
-import { suscribirACartelera, agregarSesion, eliminarSesion } from './services/firebase';
+import JoinModal from './components/JoinModal';
+import Footer from './components/Footer';
+import {
+  suscribirACartelera,
+  agregarSesion,
+  eliminarSesion,
+  actualizarSesion,
+  alternarAsistencia
+} from './services/firebase';
 
 export default function App() {
   const [sesiones, setSesiones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorConexion, setErrorConexion] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
+  const [sesionAEditar, setSesionAEditar] = useState(null);
   const [vista, setVista] = useState('lista');
 
   const [sesionAEliminar, setSesionAEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
+
+  // Nombre del usuario actual para apuntarse rápido
+  const [usuarioActual, setUsuarioActual] = useState(
+    () => localStorage.getItem('cine_autor') || ''
+  );
+  const [sesionParaApuntarse, setSesionParaApuntarse] = useState(null);
 
   useEffect(() => {
     const desuscribir = suscribirACartelera(
@@ -34,6 +49,46 @@ export default function App() {
     return () => desuscribir();
   }, []);
 
+  const manejarToggleAsistencia = async (sesion) => {
+    const nombreGuardado = (localStorage.getItem('cine_autor') || usuarioActual).trim();
+
+    if (!nombreGuardado) {
+      setSesionParaApuntarse(sesion);
+      return;
+    }
+
+    setUsuarioActual(nombreGuardado);
+    const yaEstaba = (sesion.asistentes || []).includes(nombreGuardado);
+    await alternarAsistencia(sesion.id, nombreGuardado, yaEstaba);
+  };
+
+  const confirmarNombreYApuntar = async (sesion, nuevoNombre) => {
+    localStorage.setItem('cine_autor', nuevoNombre);
+    setUsuarioActual(nuevoNombre);
+    setSesionParaApuntarse(null);
+
+    const yaEstaba = (sesion.asistentes || []).includes(nuevoNombre);
+    if (!yaEstaba) {
+      await alternarAsistencia(sesion.id, nuevoNombre, false);
+    }
+  };
+
+  const abrirParaCrear = () => {
+    setSesionAEditar(null);
+    setModalAbierto(true);
+  };
+
+  const abrirParaEditar = (sesion) => {
+    setSesionAEditar(sesion);
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setSesionAEditar(null);
+    setUsuarioActual(localStorage.getItem('cine_autor') || '');
+  };
+
   const confirmarEliminacion = async (id) => {
     setEliminando(true);
     try {
@@ -47,17 +102,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen film-grain text-zinc-100 pb-20">
+    <div className="min-h-screen film-grain text-zinc-100 flex flex-col">
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[260px] bg-rose-500/10 blur-[120px] pointer-events-none -z-10" />
 
       <Navbar
         vista={vista}
         setVista={setVista}
-        onAbrirModal={() => setModalAbierto(true)}
+        onAbrirModal={abrirParaCrear}
         totalSesiones={sesiones.length}
       />
 
-      <main className={`${vista === 'calendario' ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-10 transition-all duration-300`}>
+      <main className={`flex-1 w-full ${vista === 'calendario' ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-10 transition-all duration-300`}>
         <div className="mb-8 text-center sm:text-left">
           <p className="font-mono-ticket text-xs uppercase tracking-[0.2em] text-rose-400 mb-1">
             Programación Oficial
@@ -80,6 +135,9 @@ export default function App() {
         ) : vista === 'calendario' ? (
           <WeeklyCalendar
             sesiones={sesiones}
+            usuarioActual={usuarioActual}
+            onToggleAsistencia={manejarToggleAsistencia}
+            onEditar={abrirParaEditar}
             onEliminar={(sesion) => setSesionAEliminar(sesion)}
           />
         ) : sesiones.length === 0 ? (
@@ -98,7 +156,7 @@ export default function App() {
               Saca la primera entrada y elige qué película o serie vais a ver juntos este fin de semana.
             </p>
             <button
-              onClick={() => setModalAbierto(true)}
+              onClick={abrirParaCrear}
               className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-full transition cursor-pointer"
             >
               Sacar primer ticket
@@ -112,6 +170,9 @@ export default function App() {
                   key={sesion.id}
                   sesion={sesion}
                   index={idx}
+                  usuarioActual={usuarioActual}
+                  onToggleAsistencia={manejarToggleAsistencia}
+                  onEditar={abrirParaEditar}
                   onEliminar={(s) => setSesionAEliminar(s)}
                 />
               ))}
@@ -122,8 +183,10 @@ export default function App() {
 
       <AddModal
         isOpen={modalAbierto}
-        onClose={() => setModalAbierto(false)}
+        onClose={cerrarModal}
         onGuardar={agregarSesion}
+        onActualizar={actualizarSesion}
+        sesionAEditar={sesionAEditar}
       />
 
       <ConfirmDeleteModal
@@ -132,6 +195,14 @@ export default function App() {
         onCancelar={() => setSesionAEliminar(null)}
         onConfirmar={confirmarEliminacion}
       />
+
+      <JoinModal
+        sesion={sesionParaApuntarse}
+        onCerrar={() => setSesionParaApuntarse(null)}
+        onConfirmarNombre={confirmarNombreYApuntar}
+      />
+
+      <Footer />
     </div>
   );
 }
