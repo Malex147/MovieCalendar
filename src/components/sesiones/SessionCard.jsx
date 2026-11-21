@@ -1,16 +1,11 @@
 import { motion } from 'framer-motion';
-import {
-  Trash,
-  PencilSimple,
-  Television,
-  FilmSlate,
-  UserCircle,
-  Sparkle,
-  UsersThree,
-  Check,
-  HandWaving
-} from '@phosphor-icons/react';
+import { Television, FilmSlate, UserCircle, Sparkle, UsersThree } from '@phosphor-icons/react';
+import BotonAsistencia from './BotonAsistencia';
+import AccionesSesion from './AccionesSesion';
+import { estaApuntado, mismoNombre } from '../../lib/nombres';
+import { formatearDia, formatearHora } from '../../lib/fechas';
 
+/** Tarjeta estilo entrada de cine ("pase de sala") para la vista de lista. */
 export default function SessionCard({
   sesion,
   usuarioActual,
@@ -19,15 +14,12 @@ export default function SessionCard({
   onEditar,
   index = 0
 }) {
-  const fechaObj = new Date(sesion.fechaHora);
-
-  const diaSemana = fechaObj.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
-  const diaNumero = fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }).toUpperCase();
-  const horaTexto = fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const diaSemana = formatearDia(sesion.fechaHora, { weekday: 'short' }).toUpperCase();
+  const diaNumero = formatearDia(sesion.fechaHora, { day: '2-digit', month: 'short' }).toUpperCase();
+  const hora = formatearHora(sesion.fechaHora);
 
   const esSerie = sesion.tipo === 'Serie';
   const asistentes = sesion.asistentes || [];
-  const estoyApuntado = Boolean(usuarioActual && asistentes.includes(usuarioActual));
 
   return (
     <motion.article
@@ -44,7 +36,7 @@ export default function SessionCard({
         className="absolute inset-0 w-full h-full object-cover opacity-15 blur-2xl scale-125 pointer-events-none group-hover:opacity-25 transition-opacity"
       />
 
-      {/* Parte principal izquierda */}
+      {/* Parte principal */}
       <div className="relative flex-1 flex gap-3.5 sm:gap-5 p-3.5 sm:p-5">
         <div className="relative shrink-0 self-start">
           <img
@@ -66,9 +58,9 @@ export default function SessionCard({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
           <div>
-            <div className="flex items-center gap-2 font-mono-ticket text-[10px] sm:text-[11px] text-zinc-400 mb-1">
-              <span>{sesion.anio || 'ESTRENO'}</span>
-            </div>
+            <p className="font-mono-ticket text-[10px] sm:text-[11px] text-zinc-400 mb-1">
+              {sesion.anio || 'ESTRENO'}
+            </p>
 
             <h2 className="font-editorial text-xl sm:text-3xl text-white leading-tight line-clamp-2">
               {sesion.titulo}
@@ -89,7 +81,7 @@ export default function SessionCard({
                 </span>
               </div>
             )}
-            
+
             {sesion.editadoPor && (
               <p className="font-mono-ticket text-[10px] text-zinc-500 mt-1">
                 Editado por {sesion.editadoPor}
@@ -97,7 +89,7 @@ export default function SessionCard({
             )}
           </div>
 
-          {/* Bloque de Asistentes y Botón Me Apunto */}
+          {/* Asistentes */}
           <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               <span className="inline-flex items-center gap-1 font-mono-ticket text-[10px] uppercase text-zinc-400 mr-0.5">
@@ -106,15 +98,13 @@ export default function SessionCard({
               </span>
 
               {asistentes.length === 0 ? (
-                <span className="text-[11px] text-zinc-500 italic">
-                  Nadie aún
-                </span>
+                <span className="text-[11px] text-zinc-500 italic">Nadie aún</span>
               ) : (
                 asistentes.map((persona) => (
                   <span
                     key={persona}
                     className={`font-mono-ticket text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-0.5 rounded-full border ${
-                      persona === usuarioActual
+                      mismoNombre(persona, usuarioActual)
                         ? 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200 font-semibold'
                         : 'bg-white/5 border-white/10 text-zinc-300'
                     }`}
@@ -125,69 +115,34 @@ export default function SessionCard({
               )}
             </div>
 
-            <button
-              type="button"
+            <BotonAsistencia
+              apuntado={estaApuntado(asistentes, usuarioActual)}
               onClick={() => onToggleAsistencia(sesion)}
-              className={`shrink-0 inline-flex items-center gap-1.5 font-mono-ticket text-[11px] font-bold px-3 py-1.5 rounded-full transition cursor-pointer ${
-                estoyApuntado
-                  ? 'bg-emerald-400 text-zinc-950 shadow-md shadow-emerald-500/20 hover:bg-emerald-300'
-                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/15'
-              }`}
-            >
-              {estoyApuntado ? (
-                <>
-                  <Check weight="bold" className="w-3.5 h-3.5" />
-                  <span>Voy</span>
-                </>
-              ) : (
-                <>
-                  <HandWaving weight="duotone" className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Me apunto</span>
-                </>
-              )}
-            </button>
+            />
           </div>
         </div>
       </div>
 
-      {/* Línea perforada divisoria */}
+      {/* Línea perforada */}
       <div className="relative flex sm:flex-col items-center justify-between px-4 sm:px-0 sm:py-4">
         <div className="w-5 h-5 rounded-full bg-[#08080a] -ml-6 sm:ml-0 sm:-mt-6 border border-white/10" />
         <div className="flex-1 border-t-2 sm:border-t-0 sm:border-l-2 border-dashed border-white/15 w-full sm:w-0" />
         <div className="w-5 h-5 rounded-full bg-[#08080a] -mr-6 sm:mr-0 sm:-mb-6 border border-white/10" />
       </div>
 
-      {/* Talón derecho / inferior en móvil */}
+      {/* Talón: derecha en PC, abajo en móvil */}
       <div className="relative sm:w-36 bg-black/30 px-4 py-3 sm:p-5 flex sm:flex-col items-center justify-between sm:justify-center text-left sm:text-center">
         <div className="flex sm:block items-baseline gap-2.5">
           <span className="font-mono-ticket text-[11px] tracking-widest text-rose-400 font-semibold block">
             {diaSemana}
           </span>
-          <span className="font-mono-ticket text-xs text-zinc-300 block sm:mt-0.5">
-            {diaNumero}
-          </span>
+          <span className="font-mono-ticket text-xs text-zinc-300 block sm:mt-0.5">{diaNumero}</span>
           <span className="font-mono-ticket text-xl sm:text-3xl font-bold text-white tracking-tight block sm:mt-1">
-            {horaTexto}
+            {hora}
           </span>
         </div>
 
-        <div className="sm:mt-4 flex items-center gap-1.5">
-          <button
-            onClick={() => onEditar?.(sesion)}
-            title="Editar pase"
-            className="text-zinc-400 hover:text-amber-300 bg-white/5 hover:bg-amber-400/10 p-2 rounded-full transition cursor-pointer"
-          >
-            <PencilSimple weight="bold" className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={() => onEliminar(sesion)}
-            title="Eliminar pase"
-            className="text-zinc-500 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 p-2 rounded-full transition cursor-pointer"
-          >
-            <Trash weight="bold" className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <AccionesSesion sesion={sesion} onEditar={onEditar} onEliminar={onEliminar} className="sm:mt-4" />
       </div>
     </motion.article>
   );

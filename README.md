@@ -1,16 +1,66 @@
-# React + Vite
+# Sala Privada · Cartelera
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Cartelera privada para quedar con los amigos a ver películas y series: programar sesiones,
+apuntarse con un clic y recibir avisos en el móvil cuando algo cambia.
 
-Currently, two official plugins are available:
+**Stack:** React + Vite + Tailwind · Firebase (Auth + Firestore) · TMDB · Netlify (hosting + Functions) · Web Push.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Puesta en marcha
 
-## React Compiler
+```bash
+npm install
+cp .env.example .env   # y rellena los valores
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo (las notificaciones no se envían en local) |
+| `npm run build` | Compilación de producción en `dist/` |
+| `npm run lint` | ESLint |
 
-## Expanding the ESLint configuration
+Las variables de entorno están documentadas en [`.env.example`](.env.example). En Netlify hacen falta
+las mismas, y `VITE_*` debe ir en `SECRETS_SCAN_OMIT_KEYS`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Estructura
+
+```
+src/
+├── App.jsx              Elige pantalla: comprobando sesión / acceso / cartelera
+├── pages/Cartelera.jsx  Pantalla principal del usuario conectado
+├── hooks/               Estado y reglas de negocio (useAuth, useCartelera, useAccionesCartelera…)
+├── services/            Acceso a datos externos, sin React
+│   ├── firebase.js        Inicialización
+│   ├── auth.js            Registro, acceso y cambio de nombre
+│   ├── sesiones.js        CRUD de la cartelera y asistencia
+│   ├── notificaciones.js  Suscripción push y aviso al servidor
+│   └── tmdb.js            Búsqueda de títulos
+├── lib/                 Funciones puras compartidas con la Netlify Function
+│   └── nombres.js · fechas.js · cambios.js · colecciones.js
+└── components/
+    ├── ui/              Piezas genéricas (Modal, MensajeError, Cargando, Logo, estilos)
+    ├── layout/          Navbar, menú móvil, footer
+    ├── auth/            Pantalla de acceso
+    ├── sesiones/        Ticket, parrilla semanal, botones de asistencia y acciones
+    ├── formulario/      Popup de sesión: buscador, calendario, selector de hora
+    └── ajustes/         Perfil y notificaciones
+
+netlify/functions/notificar.mjs   Envía las notificaciones push
+public/sw.js                      Service worker (instalación PWA + push)
+```
+
+### Reglas que sigue el código
+
+- **Componentes solo pintan**; la lógica vive en `hooks/` y el acceso a datos en `services/`.
+- **Nada duplicado:** normalización de nombres y formato de fechas están solo en `lib/` y los usa
+  también el servidor.
+- **Sin diálogos nativos** (`alert`, `confirm`, `<input type="date">`): todo con componentes propios.
+- Las fechas de sesión se guardan como hora local sin zona (`"YYYY-MM-DDTHH:mm"`); usa siempre
+  `lib/fechas.js` para leerlas o formatearlas.
+
+## Datos (Firestore)
+
+- `usuarios/{slug}` — reserva del nombre único: `uid`, `nombre`, `slug`.
+- `sesiones/{id}` — `tmdbId`, `titulo`, `tipo`, `anio`, `poster`, `fechaHora`, `autor`, `nota`,
+  `asistentes[]`, `creadoPor`, `editadoPor`, `creadoEn`.
+- `suscripcionesPush/{hash}` — un documento por dispositivo con avisos activados: `uid`, `suscripcion`.
