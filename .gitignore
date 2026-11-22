@@ -37,3 +37,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Claves de cuenta de servicio de Firebase (dan acceso total a la base de datos)
+*firebase-adminsdk*.json
+service-account*.json
+
+# Netlify CLI (carpeta local)
+.netlify/
+
+# Configuración local de Claude Code
+.claude/

@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react';
-import { BellRinging, BellSlash, SpinnerGap, DeviceMobile } from '@phosphor-icons/react';
+import { BellRinging, BellSlash, SpinnerGap } from '@phosphor-icons/react';
 import MensajeError from '../ui/MensajeError';
+import InstruccionesIOS from './InstruccionesIOS';
 import {
   obtenerEstadoNotificaciones,
   activarNotificaciones,
-  desactivarNotificaciones,
-  necesitaInstalarEnIOS
+  desactivarNotificaciones
 } from '../../services/notificaciones';
 
+/** Interruptor de avisos de este dispositivo, dentro de Ajustes de perfil. */
 export default function NotificacionesAjuste() {
-  // cargando | activado | desactivado | bloqueado | no-soportado | ios-instalar
+  // cargando | activado | desactivado | sin-decidir | bloqueado | no-soportado | instalar-ios
   const [estado, setEstado] = useState('cargando');
   const [trabajando, setTrabajando] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelado = false;
-    const comprobar = async () => {
-      const nuevo = necesitaInstalarEnIOS() ? 'ios-instalar' : await obtenerEstadoNotificaciones();
+    obtenerEstadoNotificaciones().then((nuevo) => {
       if (!cancelado) setEstado(nuevo);
-    };
-    comprobar();
+    });
     return () => {
       cancelado = true;
     };
@@ -46,7 +45,7 @@ export default function NotificacionesAjuste() {
   };
 
   const activado = estado === 'activado';
-  const puedeAlternar = estado === 'activado' || estado === 'desactivado';
+  const puedeAlternar = ['activado', 'desactivado', 'sin-decidir'].includes(estado);
 
   return (
     <div className="mt-6 pt-5 border-t border-white/10">
@@ -54,14 +53,8 @@ export default function NotificacionesAjuste() {
         Notificaciones en este dispositivo
       </p>
 
-      {estado === 'ios-instalar' ? (
-        <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-zinc-300">
-          <DeviceMobile weight="duotone" className="w-5 h-5 text-amber-400 shrink-0" />
-          <span>
-            En iPhone primero añade la app a la pantalla de inicio: botón <strong>Compartir</strong> →{' '}
-            <strong>Añadir a pantalla de inicio</strong>. Ábrela desde ahí y activa los avisos.
-          </span>
-        </div>
+      {estado === 'instalar-ios' ? (
+        <InstruccionesIOS />
       ) : estado === 'no-soportado' ? (
         <p className="text-xs text-zinc-500">Este navegador no admite notificaciones.</p>
       ) : estado === 'bloqueado' ? (

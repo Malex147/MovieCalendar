@@ -2,6 +2,14 @@
   command = "npm run build"
   publish = "dist"
 
+# Las variables VITE_* acaban en el JavaScript del navegador a propósito (son públicas:
+# config web de Firebase, clave de TMDB y clave PÚBLICA de VAPID). Se excluyen del escaneo
+# de secretos de Netlify. Las privadas (VAPID_PRIVATE_KEY, FIREBASE_SERVICE_ACCOUNT)
+# NO van aquí: solo las usa la Netlify Function y nunca llegan al navegador.
+# La propia SECRETS_SCAN_OMIT_KEYS se incluye porque su valor está escrito en este archivo.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SECRETS_SCAN_OMIT_KEYS,VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,VITE_TMDB_API_KEY,VITE_VAPID_PUBLIC_KEY"
+
 [functions]
   node_bundler = "esbuild"
   # firebase-admin se instala tal cual en lugar de empaquetarlo (evita problemas con esbuild)

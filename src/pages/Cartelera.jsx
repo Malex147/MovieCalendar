@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Popcorn } from '@phosphor-icons/react';
 import Navbar from '../components/layout/Navbar';
@@ -8,6 +8,7 @@ import WeeklyCalendar from '../components/sesiones/WeeklyCalendar';
 import ConfirmDeleteModal from '../components/sesiones/ConfirmDeleteModal';
 import AddModal from '../components/formulario/AddModal';
 import SettingsModal from '../components/ajustes/SettingsModal';
+import AvisoNotificaciones from '../components/ajustes/AvisoNotificaciones';
 import Cargando from '../components/ui/Cargando';
 import MensajeError from '../components/ui/MensajeError';
 import { VISTAS } from '../components/layout/vistas';
@@ -15,6 +16,7 @@ import { useCartelera } from '../hooks/useCartelera';
 import { useAccionesCartelera } from '../hooks/useAccionesCartelera';
 import { useUltimoValor } from '../hooks/useUltimoValor';
 import { cerrarSesionUsuario, cambiarNombreUsuario } from '../services/auth';
+import { sincronizarNotificaciones, olvidarEsteDispositivo } from '../services/notificaciones';
 
 /** Pantalla principal para un usuario conectado. */
 export default function Cartelera({ usuario, onUsuarioActualizado }) {
@@ -28,6 +30,16 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
   const sesionEditada = formularioVisible?.sesion;
   const [sesionAEliminar, setSesionAEliminar] = useState(null);
   const [ajustesAbierto, setAjustesAbierto] = useState(false);
+
+  // Asegura que este dispositivo recibe los avisos de la cuenta conectada (si ya dio permiso)
+  useEffect(() => {
+    sincronizarNotificaciones();
+  }, [usuario.uid]);
+
+  const cerrarSesion = async () => {
+    await olvidarEsteDispositivo(); // antes de salir: después ya no hay permisos para borrarla
+    await cerrarSesionUsuario();
+  };
 
   const abrirParaCrear = () => setFormulario({});
   const abrirParaEditar = (sesion) => setFormulario({ sesion });
@@ -72,7 +84,7 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
         onAbrirModal={abrirParaCrear}
         totalSesiones={sesiones.length}
         usuario={usuario}
-        onCerrarSesion={cerrarSesionUsuario}
+        onCerrarSesion={cerrarSesion}
         onAbrirAjustes={() => setAjustesAbierto(true)}
       />
 
@@ -112,6 +124,8 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
         usuario={usuario}
         onGuardarNombre={cambiarNombre}
       />
+
+      <AvisoNotificaciones />
 
       <Footer />
     </div>
