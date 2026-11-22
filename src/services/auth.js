@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { renombrarEnSesiones } from './sesiones';
+import { renombrarEnPorVer } from './porVer';
 import { COLECCIONES } from '../lib/colecciones';
 import { normalizarNombre } from '../lib/nombres';
 
@@ -101,7 +102,7 @@ const actualizarEmailInterno = async (user, slug) => {
 
 /**
  * Cambia el nombre del usuario conectado manteniendo la unicidad,
- * el acceso con el nuevo nombre y sus apariciones en la cartelera.
+ * el acceso con el nuevo nombre y sus apariciones en la cartelera y en la lista "Por ver".
  */
 export const cambiarNombreUsuario = async (nuevoNombreVisible) => {
   const user = auth.currentUser;
@@ -131,7 +132,10 @@ export const cambiarNombreUsuario = async (nuevoNombreVisible) => {
     { uid: user.uid, nombre: nombreNuevo, slug: slugNuevo, actualizadoEn: serverTimestamp() },
     { merge: true }
   );
-  if (nombreAnterior) await renombrarEnSesiones(batch, nombreAnterior, nombreNuevo);
+  if (nombreAnterior) {
+    await renombrarEnSesiones(batch, nombreAnterior, nombreNuevo);
+    await renombrarEnPorVer(batch, nombreAnterior, nombreNuevo);
+  }
   await batch.commit();
 
   return aUsuario(user, nombreNuevo);

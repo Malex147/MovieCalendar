@@ -1,34 +1,56 @@
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Popcorn } from '@phosphor-icons/react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SessionCard from '../components/sesiones/SessionCard';
 import WeeklyCalendar from '../components/sesiones/WeeklyCalendar';
 import ConfirmDeleteModal from '../components/sesiones/ConfirmDeleteModal';
+import ListaPorVer from '../components/porVer/ListaPorVer';
+import AnadirPorVerModal from '../components/porVer/AnadirPorVerModal';
 import AddModal from '../components/formulario/AddModal';
 import SettingsModal from '../components/ajustes/SettingsModal';
 import AvisoNotificaciones from '../components/ajustes/AvisoNotificaciones';
+import ModalConfirmacion from '../components/ui/ModalConfirmacion';
+import EstadoVacio from '../components/ui/EstadoVacio';
 import Cargando from '../components/ui/Cargando';
 import MensajeError from '../components/ui/MensajeError';
-import { VISTAS } from '../components/layout/vistas';
-import { useCartelera } from '../hooks/useCartelera';
+import { VISTAS, buscarVista } from '../components/layout/vistas';
+import { useColeccionEnVivo } from '../hooks/useColeccionEnVivo';
 import { useAccionesCartelera } from '../hooks/useAccionesCartelera';
+import { useAccionesPorVer } from '../hooks/useAccionesPorVer';
 import { useUltimoValor } from '../hooks/useUltimoValor';
+import { suscribirACartelera } from '../services/sesiones';
+import { suscribirAPorVer } from '../services/porVer';
 import { cerrarSesionUsuario, cambiarNombreUsuario } from '../services/auth';
 import { sincronizarNotificaciones, olvidarEsteDispositivo } from '../services/notificaciones';
 
+const TEXTOS_QUITAR_POR_VER = {
+  titulo: '¿Quitar de Por ver?',
+  subtitulo: 'Desaparecerá de la lista compartida de todo el grupo.',
+  cancelar: 'Mantener',
+  confirmar: 'Sí, quitar',
+  procesando: 'Quitando...',
+  error: 'No se pudo quitar de la lista. Inténtalo de nuevo.'
+};
+
 /** Pantalla principal para un usuario conectado. */
 export default function Cartelera({ usuario, onUsuarioActualizado }) {
-  const { sesiones, cargando, error } = useCartelera();
-  const acciones = useAccionesCartelera(usuario, sesiones);
+  const cartelera = useColeccionEnVivo(suscribirACartelera);
+  const porVer = useColeccionEnVivo(suscribirAPorVer);
+  const sesiones = cartelera.datos;
+  const accionesSesion = useAccionesCartelera(usuario, sesiones);
+  const accionesPorVer = useAccionesPorVer(usuario);
 
-  const [vista, setVista] = useState(VISTAS[0].id);
-  // Formulario: cerrado (null), creando ({}) o editando ({ sesion })
+  const [vistaId, setVistaId] = useState(VISTAS[0].id);
+  const vista = buscarVista(vistaId);
+
+  // Formulario de sesión: cerrado (null), nueva ({}), editar ({ sesion }) o programar desde Por ver ({ pendiente })
   const [formulario, setFormulario] = useState(null);
   const formularioVisible = useUltimoValor(formulario); // conserva el contenido al cerrar
-  const sesionEditada = formularioVisible?.sesion;
   const [sesionAEliminar, setSesionAEliminar] = useState(null);
+  const [anadiendoPorVer, setAnadiendoPorVer] = useState(false);
+  const [pendienteAQuitar, setPendienteAQuitar] = useState(null);
   const [ajustesAbierto, setAjustesAbierto] = useState(false);
 
   // Asegura que este dispositivo recibe los avisos de la cuenta conectada (si ya dio permiso)
@@ -41,37 +63,95 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
     await cerrarSesionUsuario();
   };
 
-  const abrirParaCrear = () => setFormulario({});
-  const abrirParaEditar = (sesion) => setFormulario({ sesion });
-
   const cambiarNombre = async (nuevoNombre) => {
     onUsuarioActualizado(await cambiarNombreUsuario(nuevoNombre));
   };
 
+  const abrirParaCrear = () => setFormulario({});
+  const abrirParaEditar = (sesion) => setFormulario({ sesion });
+  const abrirParaProgramar = (pendiente) => setFormulario({ pendiente });
+
+  // Al programar un título de "Por ver", sale de la lista una vez creada la sesión
+  const crearSesion = async (datos) => {
+    await accionesSesion.crear(datos);
+    const pendiente = formulario?.pendiente;
+    if (pendiente) {
+      await accionesPorVer.quitar(pendiente.id).catch((err) => {
+        console.warn('Sesión creada, pero no se pudo quitar de Por ver:', err);
+      });
+    }
+  };
+
+  const sesionEditada = formularioVisible?.sesion;
+  const pendienteAProgramar = formularioVisible?.pendiente;
+  const plantilla = pendienteAProgramar && {
+    titulo: {
+      tmdbId: pendienteAProgramar.tmdbId,
+      titulo: pendienteAProgramar.titulo,
+      tipo: pendienteAProgramar.tipo,
+      anio: pendienteAProgramar.anio,
+      poster: pendienteAProgramar.poster
+    },
+    nota: pendienteAProgramar.nota
+  };
+
   const propsSesion = {
     usuarioActual: usuario.nombre,
-    onToggleAsistencia: acciones.alternarAsistencia,
+    onToggleAsistencia: accionesSesion.alternarAsistencia,
     onEditar: abrirParaEditar,
     onEliminar: setSesionAEliminar
   };
 
-  const esCalendario = vista === 'calendario';
+  // Qué datos necesita cada vista y cómo se pinta
+  const CONTENIDO = {
+    lista: {
+      fuente: cartelera,
+      cargando: 'Abriendo taquilla...',
+      pintar: () =>
+        sesiones.length === 0 ? (
+          <EstadoVacio
+            icono={Popcorn}
+            titulo="La sala está vacía"
+            texto="Saca la primera entrada y elige qué película o serie vais a ver juntos este fin de semana."
+            textoBoton="Sacar primer ticket"
+            onAccion={abrirParaCrear}
+          />
+        ) : (
+          <div className="space-y-5">
+            <AnimatePresence mode="popLayout">
+              {sesiones.map((sesion, idx) => (
+                <SessionCard key={sesion.id} sesion={sesion} index={idx} {...propsSesion} />
+              ))}
+            </AnimatePresence>
+          </div>
+        )
+    },
+    calendario: {
+      fuente: cartelera,
+      cargando: 'Abriendo taquilla...',
+      pintar: () => <WeeklyCalendar sesiones={sesiones} {...propsSesion} />
+    },
+    porVer: {
+      fuente: porVer,
+      cargando: 'Buscando la lista...',
+      pintar: () => (
+        <ListaPorVer
+          pendientes={porVer.datos}
+          usuarioActual={usuario.nombre}
+          onAnadir={() => setAnadiendoPorVer(true)}
+          onAlternarInteres={accionesPorVer.alternarInteres}
+          onProgramar={abrirParaProgramar}
+          onQuitar={setPendienteAQuitar}
+        />
+      )
+    }
+  };
 
   const renderizarContenido = () => {
-    if (cargando) return <Cargando mensaje="Abriendo taquilla..." />;
-    if (error) return <MensajeError>Error de conexión con Firestore: {error}</MensajeError>;
-    if (esCalendario) return <WeeklyCalendar sesiones={sesiones} {...propsSesion} />;
-    if (sesiones.length === 0) return <SalaVacia onCrear={abrirParaCrear} />;
-
-    return (
-      <div className="space-y-5">
-        <AnimatePresence mode="popLayout">
-          {sesiones.map((sesion, idx) => (
-            <SessionCard key={sesion.id} sesion={sesion} index={idx} {...propsSesion} />
-          ))}
-        </AnimatePresence>
-      </div>
-    );
+    const { fuente, cargando, pintar } = CONTENIDO[vista.id];
+    if (fuente.cargando) return <Cargando mensaje={cargando} />;
+    if (fuente.error) return <MensajeError>Error de conexión con Firestore: {fuente.error}</MensajeError>;
+    return pintar();
   };
 
   return (
@@ -79,8 +159,8 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[260px] bg-rose-500/10 blur-[120px] pointer-events-none -z-10" />
 
       <Navbar
-        vista={vista}
-        setVista={setVista}
+        vista={vista.id}
+        setVista={setVistaId}
         onAbrirModal={abrirParaCrear}
         totalSesiones={sesiones.length}
         usuario={usuario}
@@ -89,15 +169,13 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
       />
 
       <main
-        className={`flex-1 w-full ${esCalendario ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-8 sm:pt-10 transition-all duration-300`}
+        className={`flex-1 w-full ${vista.ancha ? 'max-w-6xl' : 'max-w-3xl'} mx-auto px-4 pt-8 sm:pt-10 transition-all duration-300`}
       >
         <div className="mb-8 text-center sm:text-left">
           <p className="font-mono-ticket text-xs uppercase tracking-[0.2em] text-rose-400 mb-1">
-            Programación Oficial
+            {vista.id === 'porVer' ? 'Lista compartida' : 'Programación Oficial'}
           </p>
-          <h1 className="font-editorial text-4xl sm:text-5xl text-white">
-            {esCalendario ? 'Parrilla de la semana' : 'Próximas funciones'}
-          </h1>
+          <h1 className="font-editorial text-4xl sm:text-5xl text-white">{vista.titulo}</h1>
         </div>
 
         {renderizarContenido()}
@@ -106,16 +184,31 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
       <AddModal
         abierto={formulario !== null}
         sesionAEditar={sesionEditada}
+        plantilla={plantilla}
         anfitrion={sesionEditada ? sesionEditada.autor || sesionEditada.creadoPor : usuario.nombre}
         onCerrar={() => setFormulario(null)}
-        onCrear={acciones.crear}
-        onActualizar={acciones.actualizar}
+        onCrear={crearSesion}
+        onActualizar={accionesSesion.actualizar}
       />
 
       <ConfirmDeleteModal
         sesion={sesionAEliminar}
         onCerrar={() => setSesionAEliminar(null)}
-        onConfirmar={acciones.eliminar}
+        onConfirmar={accionesSesion.eliminar}
+      />
+
+      <AnadirPorVerModal
+        abierto={anadiendoPorVer}
+        onCerrar={() => setAnadiendoPorVer(false)}
+        onAnadir={accionesPorVer.agregar}
+      />
+
+      <ModalConfirmacion
+        elemento={pendienteAQuitar}
+        onCerrar={() => setPendienteAQuitar(null)}
+        onConfirmar={accionesPorVer.quitar}
+        textos={TEXTOS_QUITAR_POR_VER}
+        detalle={(p) => `${p.tipo} · ${p.anio}`}
       />
 
       <SettingsModal
@@ -129,30 +222,5 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
 
       <Footer />
     </div>
-  );
-}
-
-function SalaVacia({ onCrear }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-center py-20 px-6 bg-zinc-900/40 border border-dashed border-white/15 rounded-3xl"
-    >
-      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-500/20 to-amber-500/20 border border-white/10 flex items-center justify-center mx-auto mb-4">
-        <Popcorn weight="duotone" className="w-8 h-8 text-amber-400" />
-      </div>
-      <h2 className="font-editorial text-3xl text-white mb-2">La sala está vacía</h2>
-      <p className="text-sm text-zinc-400 max-w-sm mx-auto mb-6">
-        Saca la primera entrada y elige qué película o serie vais a ver juntos este fin de semana.
-      </p>
-      <button
-        type="button"
-        onClick={onCrear}
-        className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-full transition cursor-pointer"
-      >
-        Sacar primer ticket
-      </button>
-    </motion.div>
   );
 }

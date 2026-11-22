@@ -28,11 +28,12 @@ las mismas, y `VITE_*` debe ir en `SECRETS_SCAN_OMIT_KEYS`.
 src/
 ├── App.jsx              Elige pantalla: comprobando sesión / acceso / cartelera
 ├── pages/Cartelera.jsx  Pantalla principal del usuario conectado
-├── hooks/               Estado y reglas de negocio (useAuth, useCartelera, useAccionesCartelera…)
+├── hooks/               Estado y reglas de negocio (useAuth, useColeccionEnVivo, useAccionesCartelera…)
 ├── services/            Acceso a datos externos, sin React
 │   ├── firebase.js        Inicialización
 │   ├── auth.js            Registro, acceso y cambio de nombre
 │   ├── sesiones.js        CRUD de la cartelera y asistencia
+│   ├── porVer.js          Lista "Por ver" (títulos sin fecha) e interés
 │   ├── notificaciones.js  Suscripción push y aviso al servidor
 │   └── tmdb.js            Búsqueda de títulos
 ├── lib/                 Funciones puras compartidas con la Netlify Function
@@ -42,6 +43,7 @@ src/
     ├── layout/          Navbar, menú móvil, footer
     ├── auth/            Pantalla de acceso
     ├── sesiones/        Ticket, parrilla semanal, botones de asistencia y acciones
+    ├── porVer/          Lista "Por ver": tarjetas y popup para añadir
     ├── formulario/      Popup de sesión: buscador, calendario, selector de hora
     └── ajustes/         Perfil y notificaciones
 
@@ -63,4 +65,7 @@ public/sw.js                      Service worker (instalación PWA + push)
 - `usuarios/{slug}` — reserva del nombre único: `uid`, `nombre`, `slug`.
 - `sesiones/{id}` — `tmdbId`, `titulo`, `tipo`, `anio`, `poster`, `fechaHora`, `autor`, `nota`,
   `asistentes[]`, `creadoPor`, `editadoPor`, `creadoEn`.
+- `porVer/{pelicula|serie}-{tmdbId}` — títulos pendientes sin fecha: `tmdbId`, `titulo`, `tipo`,
+  `anio`, `poster`, `nota`, `propuestoPor`, `interesados[]`, `creadoEn`. El id evita duplicados;
+  al programarlo como sesión se borra de la lista.
 - `suscripcionesPush/{hash}` — un documento por dispositivo con avisos activados: `uid`, `suscripcion`.

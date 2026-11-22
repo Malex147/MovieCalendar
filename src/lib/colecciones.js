@@ -2,5 +2,6 @@
 export const COLECCIONES = Object.freeze({
   SESIONES: 'sesiones',
   USUARIOS: 'usuarios',
+  POR_VER: 'porVer',
   SUSCRIPCIONES_PUSH: 'suscripcionesPush'
 });

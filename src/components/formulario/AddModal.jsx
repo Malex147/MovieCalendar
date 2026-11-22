@@ -14,8 +14,11 @@ const ETIQUETA_SECCION = 'block font-mono-ticket text-[11px] uppercase tracking-
 const ETIQUETA_CON_ICONO =
   'flex items-center gap-1.5 font-mono-ticket text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5';
 
-/** Popup para crear o editar una sesión. */
-export default function AddModal({ abierto, onCerrar, onCrear, onActualizar, sesionAEditar, anfitrion }) {
+/**
+ * Popup para crear o editar una sesión.
+ * `plantilla` ({ titulo, nota }) rellena una sesión nueva, p. ej. al programar desde "Por ver".
+ */
+export default function AddModal({ abierto, onCerrar, onCrear, onActualizar, sesionAEditar, plantilla, anfitrion }) {
   return (
     <Modal
       abierto={abierto}
@@ -25,6 +28,7 @@ export default function AddModal({ abierto, onCerrar, onCrear, onActualizar, ses
     >
       <FormularioSesion
         sesionAEditar={sesionAEditar}
+        plantilla={plantilla}
         anfitrion={anfitrion}
         onCerrar={onCerrar}
         onCrear={onCrear}
@@ -34,9 +38,16 @@ export default function AddModal({ abierto, onCerrar, onCrear, onActualizar, ses
   );
 }
 
-/** Estado inicial del formulario a partir de la sesión que se edita (o vacío si se crea). */
-const estadoInicial = (sesion) => {
-  if (!sesion) return { titulo: null, dia: hoyISO(), ...HORA_POR_DEFECTO, nota: '' };
+/** Estado inicial: la sesión que se edita, o una nueva (vacía o a partir de una plantilla). */
+const estadoInicial = (sesion, plantilla) => {
+  if (!sesion) {
+    return {
+      titulo: plantilla?.titulo ?? null,
+      dia: hoyISO(),
+      ...HORA_POR_DEFECTO,
+      nota: plantilla?.nota ?? ''
+    };
+  }
 
   const { dia, hora, minuto } = separarFechaHora(sesion.fechaHora);
   const { tmdbId, titulo, tipo, anio, poster } = sesion;
@@ -50,10 +61,11 @@ const estadoInicial = (sesion) => {
 };
 
 // Se monta cada vez que se abre el popup, así que su estado empieza siempre limpio
-function FormularioSesion({ sesionAEditar, anfitrion, onCerrar, onCrear, onActualizar }) {
+function FormularioSesion({ sesionAEditar, plantilla, anfitrion, onCerrar, onCrear, onActualizar }) {
   const esEdicion = Boolean(sesionAEditar);
-  const [form, setForm] = useState(() => estadoInicial(sesionAEditar));
-  const [panelAbierto, setPanelAbierto] = useState(null); // null | 'calendario' | 'reloj'
+  const [form, setForm] = useState(() => estadoInicial(sesionAEditar, plantilla));
+  // Si el título ya viene elegido (desde "Por ver"), se abre directamente el calendario
+  const [panelAbierto, setPanelAbierto] = useState(plantilla ? 'calendario' : null); // null | 'calendario' | 'reloj'
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 

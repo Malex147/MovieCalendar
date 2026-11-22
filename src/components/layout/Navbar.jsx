@@ -41,7 +41,7 @@ export default function Navbar({
                   key={id}
                   type="button"
                   onClick={() => setVista(id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full ${opcionSegmentada(vista === id)}`}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full whitespace-nowrap ${opcionSegmentada(vista === id)}`}
                 >
                   <Icono weight="bold" className="w-3.5 h-3.5" />
                   <span>{etiqueta}</span>
@@ -49,13 +49,15 @@ export default function Navbar({
               ))}
             </div>
 
+            {/* En pantallas medianas solo el icono, para que quepan las tres vistas */}
             <button
               type="button"
               onClick={onAbrirModal}
-              className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-amber-500 hover:opacity-95 text-zinc-950 font-bold text-xs uppercase tracking-wider px-4 py-2.5 rounded-full transition cursor-pointer shadow-lg shadow-rose-500/20"
+              aria-label="Nueva sesión"
+              className="flex items-center gap-2 bg-gradient-to-r from-rose-500 to-amber-500 hover:opacity-95 text-zinc-950 font-bold text-xs uppercase tracking-wider p-2.5 lg:px-4 rounded-full whitespace-nowrap transition cursor-pointer shadow-lg shadow-rose-500/20"
             >
               <Plus weight="bold" className="w-4 h-4" />
-              <span>Nueva sesión</span>
+              <span className="hidden lg:inline">Nueva sesión</span>
             </button>
 
             <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
@@ -63,10 +65,11 @@ export default function Navbar({
                 type="button"
                 onClick={onAbrirAjustes}
                 title="Ajustes de perfil"
-                className="inline-flex items-center gap-1.5 font-mono-ticket text-xs text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 transition cursor-pointer"
+                aria-label="Ajustes de perfil"
+                className="inline-flex items-center gap-1.5 font-mono-ticket text-xs text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-full border border-white/10 whitespace-nowrap transition cursor-pointer"
               >
                 <UserCircle weight="duotone" className="w-4 h-4 text-emerald-400" />
-                <span>{usuario.nombre}</span>
+                <span className="hidden lg:inline max-w-32 truncate">{usuario.nombre}</span>
                 <GearSix weight="bold" className="w-3.5 h-3.5 text-zinc-400 ml-0.5" />
               </button>
               <button
