@@ -1,8 +1,9 @@
-// Acceso a la colección de sesiones (la cartelera).
+// Acceso a la colección de sesiones: la cartelera y, con `vista: true`, el historial de vistas.
 import {
   collection,
   addDoc,
   deleteDoc,
+  deleteField,
   doc,
   getDocs,
   updateDoc,
@@ -41,6 +42,14 @@ export const actualizarSesion = (id, datosActualizados) =>
   updateDoc(refSesion(id), datosActualizados);
 
 export const eliminarSesion = (id) => deleteDoc(refSesion(id));
+
+/** Pasa una sesión al historial de "Vistas" (deja de salir en la cartelera y la parrilla). */
+export const marcarComoVista = (id, nombre) =>
+  updateDoc(refSesion(id), { vista: true, vistaEn: serverTimestamp(), marcadaVistaPor: nombre });
+
+/** Deshace "vista": la sesión vuelve a la cartelera. */
+export const desmarcarVista = (id) =>
+  updateDoc(refSesion(id), { vista: false, vistaEn: deleteField(), marcadaVistaPor: deleteField() });
 
 export const apuntarse = (sesionId, nombre) =>
   updateDoc(refSesion(sesionId), { asistentes: arrayUnion(nombre) });

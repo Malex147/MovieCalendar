@@ -1,4 +1,11 @@
-import { agregarAPorVer, quitarDePorVer, marcarInteres, quitarInteres } from '../services/porVer';
+import {
+  agregarAPorVer,
+  quitarDePorVer,
+  marcarInteres,
+  quitarInteres,
+  reordenarPorVer,
+  marcarPendienteComoVisto
+} from '../services/porVer';
 import { entradasDeUsuario } from '../lib/nombres';
 
 /** Acciones sobre la lista "Por ver" en nombre del usuario conectado. */
@@ -14,5 +21,9 @@ export function useAccionesPorVer(usuario) {
       : marcarInteres(pendiente.id, usuario.nombre);
   };
 
-  return { agregar, quitar, alternarInteres };
+  const reordenar = (pendientesEnOrden) => reordenarPorVer(pendientesEnOrden);
+
+  const marcarVisto = (pendiente) => marcarPendienteComoVisto(pendiente, usuario.nombre);
+
+  return { agregar, quitar, alternarInteres, reordenar, marcarVisto };
 }

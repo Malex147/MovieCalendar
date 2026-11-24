@@ -1,4 +1,4 @@
-import { Ticket, CalendarBlank, BookmarkSimple } from '@phosphor-icons/react';
+import { Ticket, CalendarBlank, BookmarkSimple, FilmReel } from '@phosphor-icons/react';
 
 // Vistas de la cartelera. Para añadir una nueva basta con añadirla aquí
 // (y su contenido en pages/Cartelera.jsx). `ancha` usa todo el ancho de la página.
@@ -25,6 +25,14 @@ export const VISTAS = [
     etiquetaLarga: 'Por ver (sin fecha)',
     titulo: 'Por ver',
     Icono: BookmarkSimple,
+    ancha: true
+  },
+  {
+    id: 'vistas',
+    etiqueta: 'Vistas',
+    etiquetaLarga: 'Ya vistas',
+    titulo: 'Ya vistas',
+    Icono: FilmReel,
     ancha: true
   }
 ];

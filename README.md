@@ -43,7 +43,8 @@ src/
     ├── layout/          Navbar, menú móvil, footer
     ├── auth/            Pantalla de acceso
     ├── sesiones/        Ticket, parrilla semanal, botones de asistencia y acciones
-    ├── porVer/          Lista "Por ver": tarjetas y popup para añadir
+    ├── porVer/          Lista "Por ver": tarjetas reordenables y popup para añadir
+    ├── vistas/          Historial "Ya vistas", agrupado por meses
     ├── formulario/      Popup de sesión: buscador, calendario, selector de hora
     └── ajustes/         Perfil y notificaciones
 
@@ -64,8 +65,10 @@ public/sw.js                      Service worker (instalación PWA + push)
 
 - `usuarios/{slug}` — reserva del nombre único: `uid`, `nombre`, `slug`.
 - `sesiones/{id}` — `tmdbId`, `titulo`, `tipo`, `anio`, `poster`, `fechaHora`, `autor`, `nota`,
-  `asistentes[]`, `creadoPor`, `editadoPor`, `creadoEn`.
+  `asistentes[]`, `creadoPor`, `editadoPor`, `creadoEn`. Con `vista: true` (+ `vistaEn`,
+  `marcadaVistaPor`) sale de la cartelera y la parrilla y aparece en "Ya vistas".
 - `porVer/{pelicula|serie}-{tmdbId}` — títulos pendientes sin fecha: `tmdbId`, `titulo`, `tipo`,
-  `anio`, `poster`, `nota`, `propuestoPor`, `interesados[]`, `creadoEn`. El id evita duplicados;
-  al programarlo como sesión se borra de la lista.
+  `anio`, `poster`, `nota`, `propuestoPor`, `interesados[]`, `orden`, `creadoEn`. El id evita
+  duplicados; `orden` es la posición elegida arrastrando (compartida). Al programarlo como sesión,
+  o marcarlo como visto, se borra de la lista.
 - `suscripcionesPush/{hash}` — un documento por dispositivo con avisos activados: `uid`, `suscripcion`.

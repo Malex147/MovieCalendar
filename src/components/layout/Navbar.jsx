@@ -41,10 +41,14 @@ export default function Navbar({
                   key={id}
                   type="button"
                   onClick={() => setVista(id)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full whitespace-nowrap ${opcionSegmentada(vista === id)}`}
+                  title={etiqueta}
+                  aria-label={etiqueta}
+                  aria-pressed={vista === id}
+                  className={`flex items-center gap-1.5 px-3 lg:px-3.5 py-1.5 rounded-full whitespace-nowrap ${opcionSegmentada(vista === id)}`}
                 >
                   <Icono weight="bold" className="w-3.5 h-3.5" />
-                  <span>{etiqueta}</span>
+                  {/* En pantallas medianas solo el icono, para que quepan todas las vistas */}
+                  <span className="hidden lg:inline">{etiqueta}</span>
                 </button>
               ))}
             </div>

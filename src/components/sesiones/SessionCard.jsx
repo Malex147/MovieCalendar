@@ -11,6 +11,7 @@ export default function SessionCard({
   usuarioActual,
   onToggleAsistencia,
   onEliminar,
+  onMarcarVista,
   onEditar,
   index = 0
 }) {
@@ -142,7 +143,13 @@ export default function SessionCard({
           </span>
         </div>
 
-        <AccionesSesion sesion={sesion} onEditar={onEditar} onEliminar={onEliminar} className="sm:mt-4" />
+        <AccionesSesion
+          sesion={sesion}
+          onMarcarVista={onMarcarVista}
+          onEditar={onEditar}
+          onEliminar={onEliminar}
+          className="sm:mt-4"
+        />
       </div>
     </motion.article>
   );

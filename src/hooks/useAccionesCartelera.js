@@ -3,7 +3,9 @@ import {
   actualizarSesion,
   eliminarSesion,
   apuntarse,
-  desapuntarse
+  desapuntarse,
+  marcarComoVista,
+  desmarcarVista
 } from '../services/sesiones';
 import { avisarCambioCartelera } from '../services/notificaciones';
 import { describirCambios } from '../lib/cambios';
@@ -53,5 +55,10 @@ export function useAccionesCartelera(usuario, sesiones) {
       : apuntarse(sesion.id, usuario.nombre);
   };
 
-  return { crear, actualizar, eliminar, alternarAsistencia };
+  // Historial de vistas: sin notificaciones, no cambia nada para quien iba a ir
+  const marcarVista = (sesion) => marcarComoVista(sesion.id, usuario.nombre);
+  const desmarcar = (sesion) => desmarcarVista(sesion.id);
+  const borrarDelHistorial = (id) => eliminarSesion(id);
+
+  return { crear, actualizar, eliminar, alternarAsistencia, marcarVista, desmarcar, borrarDelHistorial };
 }

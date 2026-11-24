@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 
-/** Mensaje para una lista vacía, con icono y un botón de acción. */
+/** Mensaje para una lista vacía, con icono y (opcionalmente) un botón de acción. */
 export default function EstadoVacio({ icono: Icono, titulo, texto, textoBoton, onAccion }) {
   return (
     <motion.div
@@ -12,14 +12,16 @@ export default function EstadoVacio({ icono: Icono, titulo, texto, textoBoton, o
         <Icono weight="duotone" className="w-8 h-8 text-amber-400" />
       </div>
       <h2 className="font-editorial text-3xl text-white mb-2">{titulo}</h2>
-      <p className="text-sm text-zinc-400 max-w-sm mx-auto mb-6">{texto}</p>
-      <button
-        type="button"
-        onClick={onAccion}
-        className="bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-full transition cursor-pointer"
-      >
-        {textoBoton}
-      </button>
+      <p className="text-sm text-zinc-400 max-w-sm mx-auto">{texto}</p>
+      {onAccion && (
+        <button
+          type="button"
+          onClick={onAccion}
+          className="mt-6 bg-white hover:bg-zinc-200 text-zinc-950 font-bold text-xs uppercase tracking-wider px-6 py-3 rounded-full transition cursor-pointer"
+        >
+          {textoBoton}
+        </button>
+      )}
     </motion.div>
   );
 }

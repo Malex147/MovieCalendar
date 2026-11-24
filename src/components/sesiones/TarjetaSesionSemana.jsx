@@ -11,7 +11,8 @@ export default function TarjetaSesionSemana({
   usuarioActual,
   onToggleAsistencia,
   onEditar,
-  onEliminar
+  onEliminar,
+  onMarcarVista
 }) {
   const hora = formatearHora(sesion.fechaHora);
   const asistentes = sesion.asistentes || [];
@@ -37,7 +38,13 @@ export default function TarjetaSesionSemana({
               <Clock weight="fill" className="w-3 h-3" />
               {hora}
             </span>
-            <AccionesSesion sesion={sesion} onEditar={onEditar} onEliminar={onEliminar} variante="compacto" />
+            <AccionesSesion
+              sesion={sesion}
+              onMarcarVista={onMarcarVista}
+              onEditar={onEditar}
+              onEliminar={onEliminar}
+              variante="compacto"
+            />
           </div>
 
           <p className="text-sm font-bold text-white truncate mt-1.5">{sesion.titulo}</p>
@@ -68,6 +75,7 @@ export default function TarjetaSesionSemana({
 
         <AccionesSesion
           sesion={sesion}
+          onMarcarVista={onMarcarVista}
           onEditar={onEditar}
           onEliminar={onEliminar}
           variante="superpuesto"

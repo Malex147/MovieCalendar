@@ -23,6 +23,15 @@ export const separarFechaHora = (fechaHora = '') => {
 
 export const unirFechaHora = (dia, hora, minuto) => `${dia}T${hora}:${minuto}`;
 
+/** Momento actual en el formato de las sesiones: "YYYY-MM-DDTHH:mm" (hora local). */
+export const ahoraFechaHora = () => {
+  const ahora = new Date();
+  return unirFechaHora(aDiaISO(ahora), dosCifras(ahora.getHours()), dosCifras(ahora.getMinutes()));
+};
+
+/** "noviembre de 2026" a partir de "YYYY-MM-DD…" */
+export const formatearMes = (fechaHora = '') => formatearDia(fechaHora, { month: 'long', year: 'numeric' });
+
 /** "YYYY-MM-DDTHH:mm" → "HH:mm" */
 export const formatearHora = (fechaHora = '') => fechaHora.slice(11, 16);
 

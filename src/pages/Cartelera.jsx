@@ -8,6 +8,8 @@ import WeeklyCalendar from '../components/sesiones/WeeklyCalendar';
 import ConfirmDeleteModal from '../components/sesiones/ConfirmDeleteModal';
 import ListaPorVer from '../components/porVer/ListaPorVer';
 import AnadirPorVerModal from '../components/porVer/AnadirPorVerModal';
+import ListaVistas from '../components/vistas/ListaVistas';
+import { formatearDia } from '../lib/fechas';
 import AddModal from '../components/formulario/AddModal';
 import SettingsModal from '../components/ajustes/SettingsModal';
 import AvisoNotificaciones from '../components/ajustes/AvisoNotificaciones';
@@ -34,12 +36,25 @@ const TEXTOS_QUITAR_POR_VER = {
   error: 'No se pudo quitar de la lista. Inténtalo de nuevo.'
 };
 
+const TEXTOS_BORRAR_VISTA = {
+  titulo: '¿Borrar del historial?',
+  subtitulo: 'Se quitará de "Ya vistas" para todo el grupo. Si solo os equivocasteis al marcarla, mejor desmárcala.',
+  cancelar: 'Mantener',
+  confirmar: 'Sí, borrar',
+  procesando: 'Borrando...',
+  error: 'No se pudo borrar. Inténtalo de nuevo.'
+};
+
+const SUBTITULOS = { porVer: 'Lista compartida', vistas: 'Historial del grupo' };
+
 /** Pantalla principal para un usuario conectado. */
 export default function Cartelera({ usuario, onUsuarioActualizado }) {
   const cartelera = useColeccionEnVivo(suscribirACartelera);
   const porVer = useColeccionEnVivo(suscribirAPorVer);
-  const sesiones = cartelera.datos;
-  const accionesSesion = useAccionesCartelera(usuario, sesiones);
+  // Las sesiones marcadas como vistas salen de la cartelera y la parrilla y pasan al historial
+  const sesiones = cartelera.datos.filter((s) => !s.vista);
+  const vistas = cartelera.datos.filter((s) => s.vista);
+  const accionesSesion = useAccionesCartelera(usuario, cartelera.datos);
   const accionesPorVer = useAccionesPorVer(usuario);
 
   const [vistaId, setVistaId] = useState(VISTAS[0].id);
@@ -51,6 +66,7 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
   const [sesionAEliminar, setSesionAEliminar] = useState(null);
   const [anadiendoPorVer, setAnadiendoPorVer] = useState(false);
   const [pendienteAQuitar, setPendienteAQuitar] = useState(null);
+  const [vistaABorrar, setVistaABorrar] = useState(null);
   const [ajustesAbierto, setAjustesAbierto] = useState(false);
 
   // Asegura que este dispositivo recibe los avisos de la cuenta conectada (si ya dio permiso)
@@ -99,7 +115,8 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
     usuarioActual: usuario.nombre,
     onToggleAsistencia: accionesSesion.alternarAsistencia,
     onEditar: abrirParaEditar,
-    onEliminar: setSesionAEliminar
+    onEliminar: setSesionAEliminar,
+    onMarcarVista: accionesSesion.marcarVista
   };
 
   // Qué datos necesita cada vista y cómo se pinta
@@ -142,6 +159,20 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
           onAlternarInteres={accionesPorVer.alternarInteres}
           onProgramar={abrirParaProgramar}
           onQuitar={setPendienteAQuitar}
+          onMarcarVisto={accionesPorVer.marcarVisto}
+          onReordenar={accionesPorVer.reordenar}
+        />
+      )
+    },
+    vistas: {
+      fuente: cartelera,
+      cargando: 'Rebobinando...',
+      pintar: () => (
+        <ListaVistas
+          sesiones={vistas}
+          usuarioActual={usuario.nombre}
+          onDesmarcar={accionesSesion.desmarcar}
+          onBorrar={setVistaABorrar}
         />
       )
     }
@@ -173,7 +204,7 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
       >
         <div className="mb-8 text-center sm:text-left">
           <p className="font-mono-ticket text-xs uppercase tracking-[0.2em] text-rose-400 mb-1">
-            {vista.id === 'porVer' ? 'Lista compartida' : 'Programación Oficial'}
+            {SUBTITULOS[vista.id] ?? 'Programación Oficial'}
           </p>
           <h1 className="font-editorial text-4xl sm:text-5xl text-white">{vista.titulo}</h1>
         </div>
@@ -209,6 +240,14 @@ export default function Cartelera({ usuario, onUsuarioActualizado }) {
         onConfirmar={accionesPorVer.quitar}
         textos={TEXTOS_QUITAR_POR_VER}
         detalle={(p) => `${p.tipo} · ${p.anio}`}
+      />
+
+      <ModalConfirmacion
+        elemento={vistaABorrar}
+        onCerrar={() => setVistaABorrar(null)}
+        onConfirmar={accionesSesion.borrarDelHistorial}
+        textos={TEXTOS_BORRAR_VISTA}
+        detalle={(s) => `Vista el ${formatearDia(s.fechaHora)}`}
       />
 
       <SettingsModal
